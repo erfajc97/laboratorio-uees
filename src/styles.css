@@ -1,0 +1,75 @@
+@import 'tailwindcss';
+@plugin '../hero.ts';
+@source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --radius-lg: 50rem;
+}
+
+body {
+  @apply m-0;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: 'Poppins', sans-serif;
+}
+
+.ant-form-item {
+  margin-bottom: 12px;
+}
+
+.ant-form-item .ant-form-item-explain {
+  font-size: 12px;
+}
+
+.ant-form-item.ant-form-item-has-error .ant-form-item-required,
+.ant-form-item .ant-form-item-explain-error {
+  color: #f31260;
+}
+
+.ant-form-item
+  .ant-form-item-row
+  .ant-form-item-label
+  .ant-form-item-required::before {
+  content: '' !important;
+  display: none !important;
+}
+
+.ant-form-item
+  .ant-form-item-row
+  .ant-form-item-label
+  .ant-form-item-required::after {
+  content: '*' !important;
+  display: inline-block;
+  margin-inline-end: 4px;
+  color: #f31260;
+  line-height: 1;
+  visibility: visible !important;
+}
+
+.swal2-popup {
+  border-radius: 1rem;
+  padding-bottom: 2rem;
+}
+
+.swal2-html-container {
+  font-weight: 500 !important;
+  padding-top: 0.75rem !important;
+}
+
+.swal2-icon {
+  scale: 0.75 !important;
+  margin: 1.5em auto 0em !important;
+}
+
+.swal2-confirm,
+.swal2-cancel {
+  box-shadow: none !important;
+  border-radius: 0.8rem !important;
+  width: 100px;
+  padding: 0.4rem;
+}
