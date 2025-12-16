@@ -1,12 +1,12 @@
 import axiosInstance from '../../../api/axios.config'
 import { endpoints } from '../../../api/endpoints'
 import type {
-  MetricsSummary,
-  MetricsLogsResponse,
-  MetricsLatency,
-  ThroughputPoint,
-  ExperimentRun,
   CreateExperimentDto,
+  ExperimentRun,
+  MetricsLatency,
+  MetricsLogsResponse,
+  MetricsSummary,
+  ThroughputPoint,
 } from '../types/metrics.types'
 import type {
   EconomicImpactDefaults,
@@ -60,7 +60,9 @@ export const metricsService = {
       from: convertToISO(params?.from),
       to: convertToISO(params?.to),
     })
-    const response = await axiosInstance.get(endpoints.metrics.summary, { params: cleanParamsObj })
+    const response = await axiosInstance.get(endpoints.metrics.summary, {
+      params: cleanParamsObj,
+    })
     return response.data
   },
 
@@ -79,7 +81,9 @@ export const metricsService = {
       from: convertToISO(params?.from),
       to: convertToISO(params?.to),
     })
-    const response = await axiosInstance.get(endpoints.metrics.logs, { params: cleanParamsObj })
+    const response = await axiosInstance.get(endpoints.metrics.logs, {
+      params: cleanParamsObj,
+    })
     return response.data
   },
 
@@ -94,18 +98,22 @@ export const metricsService = {
       from: convertToISO(params?.from),
       to: convertToISO(params?.to),
     })
-    const response = await axiosInstance.get(endpoints.metrics.latency, { params: cleanParamsObj })
+    const response = await axiosInstance.get(endpoints.metrics.latency, {
+      params: cleanParamsObj,
+    })
     return response.data
   },
 
-  async getThroughput(experimentRunId: string): Promise<ThroughputPoint[]> {
+  async getThroughput(
+    experimentRunId: string,
+  ): Promise<Array<ThroughputPoint>> {
     const response = await axiosInstance.get(endpoints.metrics.throughput, {
       params: { experimentRunId },
     })
     return response.data
   },
 
-  async getExperiments(): Promise<ExperimentRun[]> {
+  async getExperiments(): Promise<Array<ExperimentRun>> {
     const response = await axiosInstance.get(endpoints.experiments.list)
     return response.data
   },
@@ -120,15 +128,33 @@ export const metricsService = {
     return response.data
   },
 
-  async runExperiment(id: string, dryRun?: boolean): Promise<{ message: string; id: string }> {
-    const response = await axiosInstance.post(endpoints.experiments.run(id, dryRun))
+  async runExperiment(
+    id: string,
+    dryRun?: boolean,
+  ): Promise<{ message: string; id: string }> {
+    const response = await axiosInstance.post(
+      endpoints.experiments.run(id, dryRun),
+    )
     return response.data
   },
 
-  async exportExperiment(id: string, format: 'csv' | 'json' = 'json'): Promise<Blob> {
-    const response = await axiosInstance.get(endpoints.experiments.export(id, format), {
-      responseType: 'blob',
-    })
+  async exportExperiment(
+    id: string,
+    format: 'csv' | 'json' = 'json',
+  ): Promise<Blob> {
+    const response = await axiosInstance.get(
+      endpoints.experiments.export(id, format),
+      {
+        responseType: 'blob',
+      },
+    )
+    return response.data
+  },
+
+  async deleteExperiment(id: string): Promise<{ message: string; id: string }> {
+    const response = await axiosInstance.delete(
+      endpoints.experiments.delete(id),
+    )
     return response.data
   },
 
@@ -140,8 +166,10 @@ export const metricsService = {
   async calculateEconomicImpact(
     inputs: EconomicImpactInputs,
   ): Promise<EconomicImpactResult> {
-    const response = await axiosInstance.post(endpoints.metrics.economicCalculate, inputs)
+    const response = await axiosInstance.post(
+      endpoints.metrics.economicCalculate,
+      inputs,
+    )
     return response.data
   },
 }
-

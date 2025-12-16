@@ -17,5 +17,6 @@ export const endpoints = {
       `${API_BASE_URL}/experiments/${id}/run${dryRun ? '?dryRun=true' : ''}`,
     export: (id: string, format: 'csv' | 'json' = 'json') =>
       `${API_BASE_URL}/experiments/${id}/export?format=${format}`,
+    delete: (id: string) => `${API_BASE_URL}/experiments/${id}`,
   },
 } as const

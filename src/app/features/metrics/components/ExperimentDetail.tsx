@@ -15,11 +15,13 @@ import { metricsService } from '../services/metrics.service'
 interface ExperimentDetailProps {
   experimentId: string
   onBack: () => void
+  onDelete?: () => void
 }
 
 export default function ExperimentDetail({
   experimentId,
   onBack,
+  onDelete,
 }: ExperimentDetailProps) {
   const queryClient = useQueryClient()
   const [dryRun, setDryRun] = useState(false)
@@ -57,6 +59,28 @@ export default function ExperimentDetail({
       document.body.removeChild(a)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => metricsService.deleteExperiment(experimentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['experiments'] })
+      if (onDelete) {
+        onDelete()
+      } else {
+        onBack()
+      }
+    },
+  })
+
+  const handleDelete = () => {
+    if (
+      window.confirm(
+        `¿Estás seguro de que quieres eliminar el experimento "${data.name}"? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      deleteMutation.mutate()
+    }
+  }
 
   if (isLoading) {
     return <div className="text-center py-8">Cargando experimento...</div>
@@ -131,6 +155,15 @@ export default function ExperimentDetail({
           >
             Exportar CSV
           </button>
+          {data.status !== 'RUNNING' && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          )}
         </div>
       </div>
 

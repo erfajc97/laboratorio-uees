@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { metricsService } from '../services/metrics.service'
 import ExperimentForm from './ExperimentForm'
 import ExperimentDetail from './ExperimentDetail'
@@ -9,21 +9,62 @@ interface ExperimentsListProps {
   onSelectExperiment?: (experimentId: string) => void
 }
 
-export default function ExperimentsList({ onSelectExperiment }: ExperimentsListProps) {
+export default function ExperimentsList({
+  onSelectExperiment,
+}: ExperimentsListProps) {
   const [showForm, setShowForm] = useState(false)
-  const [selectedExperiment, setSelectedExperiment] = useState<string | null>(null)
+  const [selectedExperiment, setSelectedExperiment] = useState<string | null>(
+    null,
+  )
 
+  const queryClient = useQueryClient()
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['experiments'],
     queryFn: () => metricsService.getExperiments(),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => metricsService.deleteExperiment(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['experiments'] })
+    },
+  })
+
+  const handleDelete = async (
+    id: string,
+    name: string,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation()
+    if (
+      window.confirm(
+        `¿Estás seguro de que quieres eliminar el experimento "${name}"? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      try {
+        await deleteMutation.mutateAsync(id)
+      } catch (deleteError) {
+        alert(
+          `Error al eliminar el experimento: ${deleteError instanceof Error ? deleteError.message : 'Error desconocido'}`,
+        )
+      }
+    }
+  }
+
   if (isLoading) {
-    return <div className="text-center py-8">Cargando experimentos del laboratorio...</div>
+    return (
+      <div className="text-center py-8">
+        Cargando experimentos del laboratorio...
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Error al cargar experimentos del laboratorio</div>
+    return (
+      <div className="text-center py-8 text-red-600">
+        Error al cargar experimentos del laboratorio
+      </div>
+    )
   }
 
   if (selectedExperiment) {
@@ -31,6 +72,7 @@ export default function ExperimentsList({ onSelectExperiment }: ExperimentsListP
       <ExperimentDetail
         experimentId={selectedExperiment}
         onBack={() => setSelectedExperiment(null)}
+        onDelete={() => setSelectedExperiment(null)}
       />
     )
   }
@@ -90,7 +132,9 @@ export default function ExperimentsList({ onSelectExperiment }: ExperimentsListP
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{experiment.name}</h3>
                   {experiment.description && (
-                    <p className="text-sm text-gray-600 mt-1">{experiment.description}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {experiment.description}
+                    </p>
                   )}
                   <div className="mt-2 flex gap-4 text-sm text-gray-600">
                     <span>Escenario: {experiment.scenario}</span>
@@ -115,18 +159,34 @@ export default function ExperimentsList({ onSelectExperiment }: ExperimentsListP
                       {experiment._count.metricEvents} eventos
                     </span>
                   )}
-                  {onSelectExperiment && experiment.status === 'DONE' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSelectExperiment(experiment.id)
-                      }}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md shadow hover:bg-blue-700"
-                      title="Usar este experimento en los filtros"
-                    >
-                      Ver Métricas
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    {onSelectExperiment && experiment.status === 'DONE' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectExperiment(experiment.id)
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md shadow hover:bg-blue-700"
+                        title="Usar este experimento en los filtros"
+                      >
+                        Ver Métricas
+                      </button>
+                    )}
+                    {experiment.status !== 'RUNNING' && (
+                      <button
+                        onClick={(e) =>
+                          handleDelete(experiment.id, experiment.name, e)
+                        }
+                        disabled={deleteMutation.isPending}
+                        className="px-3 py-1 text-xs bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Eliminar experimento"
+                      >
+                        {deleteMutation.isPending
+                          ? 'Eliminando...'
+                          : 'Eliminar'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -136,4 +196,3 @@ export default function ExperimentsList({ onSelectExperiment }: ExperimentsListP
     </div>
   )
 }
-
