@@ -64,11 +64,33 @@ export default function ExperimentsList({
       )
     ) {
       try {
-        await deleteMutation.mutateAsync(id)
+        console.log(`[DELETE] Intentando eliminar experimento ${id} - ${name}`)
+        const result = await deleteMutation.mutateAsync(id)
+        console.log(`[DELETE] ✅ Experimento eliminado exitosamente:`, result)
+        // La invalidación de queries se hace automáticamente en onSuccess
       } catch (deleteError) {
-        alert(
-          `Error al eliminar el experimento: ${deleteError instanceof Error ? deleteError.message : 'Error desconocido'}`,
+        console.error(
+          `[DELETE] ❌ Error al eliminar experimento ${id}:`,
+          deleteError,
         )
+        let errorMessage = 'Error desconocido'
+        if (deleteError instanceof Error) {
+          errorMessage = deleteError.message
+        } else if (
+          deleteError &&
+          typeof deleteError === 'object' &&
+          'response' in deleteError
+        ) {
+          const axiosError = deleteError as any
+          if (axiosError.response?.data?.message) {
+            errorMessage = axiosError.response.data.message
+          } else if (axiosError.response?.statusText) {
+            errorMessage = `${axiosError.response.status} - ${axiosError.response.statusText}`
+          } else {
+            errorMessage = axiosError.message || 'Error de red'
+          }
+        }
+        alert(`Error al eliminar el experimento: ${errorMessage}`)
       }
     }
   }
