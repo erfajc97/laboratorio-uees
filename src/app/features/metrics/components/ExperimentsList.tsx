@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { metricsService } from '../services/metrics.service'
 import ExperimentForm from './ExperimentForm'
 import ExperimentDetail from './ExperimentDetail'
+import { DeleteExperimentModal } from './DeleteExperimentModal'
 import type { ExperimentRun, ExperimentStatus } from '../types/metrics.types'
+import { ToastResponse } from '@/components/ToastResponse'
 
 interface ExperimentsListProps {
   onSelectExperiment?: (experimentId: string) => void
@@ -16,18 +18,16 @@ export default function ExperimentsList({
   const [selectedExperiment, setSelectedExperiment] = useState<string | null>(
     null,
   )
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deletingExperiment, setDeletingExperiment] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   const queryClient = useQueryClient()
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['experiments'],
     queryFn: () => metricsService.getExperiments(),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => metricsService.deleteExperiment(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['experiments'] })
-    },
   })
 
   const repeatMutation = useMutation({
@@ -49,70 +49,39 @@ export default function ExperimentsList({
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['experiments'] })
+      ToastResponse('Experimento repetido exitosamente', 'success')
+    },
+    onError: (repeatError) => {
+      console.error('Error al repetir experimento:', repeatError)
+      let errorMessage =
+        'Error al repetir el experimento. Por favor, intente nuevamente.'
+
+      if (repeatError instanceof Error) {
+        errorMessage = repeatError.message
+      } else {
+        const axiosError = repeatError as any
+        if (axiosError?.response?.data?.message) {
+          errorMessage = axiosError.response.data.message
+        } else if (axiosError?.response?.statusText) {
+          errorMessage = `${axiosError.response.status} - ${axiosError.response.statusText}`
+        } else if (axiosError?.message) {
+          errorMessage = axiosError.message
+        }
+      }
+
+      ToastResponse(errorMessage, 'error')
     },
   })
 
-  const handleDelete = async (
-    id: string,
-    name: string,
-    e: React.MouseEvent,
-  ) => {
+  const handleDelete = (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (
-      window.confirm(
-        `¿Estás seguro de que quieres eliminar el experimento "${name}"? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      try {
-        console.log(`[DELETE] Intentando eliminar experimento ${id} - ${name}`)
-        const result = await deleteMutation.mutateAsync(id)
-        console.log(`[DELETE] ✅ Experimento eliminado exitosamente:`, result)
-        // La invalidación de queries se hace automáticamente en onSuccess
-      } catch (deleteError) {
-        console.error(
-          `[DELETE] ❌ Error al eliminar experimento ${id}:`,
-          deleteError,
-        )
-        let errorMessage = 'Error desconocido'
-        if (deleteError instanceof Error) {
-          errorMessage = deleteError.message
-        } else if (
-          deleteError &&
-          typeof deleteError === 'object' &&
-          'response' in deleteError
-        ) {
-          const axiosError = deleteError as any
-          if (axiosError.response?.data?.message) {
-            errorMessage = axiosError.response.data.message
-          } else if (axiosError.response?.statusText) {
-            errorMessage = `${axiosError.response.status} - ${axiosError.response.statusText}`
-          } else {
-            errorMessage = axiosError.message || 'Error de red'
-          }
-        }
-        alert(`Error al eliminar el experimento: ${errorMessage}`)
-      }
-    }
+    setDeletingExperiment({ id, name })
+    setIsDeleteModalOpen(true)
   }
 
-  const handleRepeat = async (
-    experiment: ExperimentRun,
-    e: React.MouseEvent,
-  ) => {
+  const handleRepeat = (experiment: ExperimentRun, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (
-      window.confirm(
-        `¿Deseas crear y ejecutar una nueva copia del experimento "${experiment.name}" con los mismos parámetros?`,
-      )
-    ) {
-      try {
-        await repeatMutation.mutateAsync(experiment)
-      } catch (repeatError) {
-        alert(
-          `Error al repetir el experimento: ${repeatError instanceof Error ? repeatError.message : 'Error desconocido'}`,
-        )
-      }
-    }
+    repeatMutation.mutate(experiment)
   }
 
   if (isLoading) {
@@ -253,13 +222,10 @@ export default function ExperimentsList({
                             onClick={(e) =>
                               handleDelete(experiment.id, experiment.name, e)
                             }
-                            disabled={deleteMutation.isPending}
                             className="px-3 py-1 text-xs bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Eliminar experimento"
                           >
-                            {deleteMutation.isPending
-                              ? 'Eliminando...'
-                              : 'Eliminar'}
+                            Eliminar
                           </button>
                         </>
                       )}
@@ -271,6 +237,13 @@ export default function ExperimentsList({
           ))}
         </div>
       )}
+
+      <DeleteExperimentModal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        experimentId={deletingExperiment?.id}
+        experimentName={deletingExperiment?.name}
+      />
     </div>
   )
 }
