@@ -22,7 +22,6 @@ export default function ExperimentForm({
     totalMessages: 100,
     concurrency: 5,
     ratePerSec: 10,
-    dryRun: true,
   })
 
   const createMutation = useMutation({
@@ -176,21 +175,6 @@ export default function ExperimentForm({
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-        </div>
-
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="dryRun"
-            checked={formData.dryRun}
-            onChange={(e) =>
-              setFormData({ ...formData, dryRun: e.target.checked })
-            }
-            className="mr-2"
-          />
-          <label htmlFor="dryRun" className="text-sm font-medium text-gray-700">
-            Modo Dry-Run (no enviar notificaciones reales)
-          </label>
         </div>
 
         <div className="flex gap-4">
