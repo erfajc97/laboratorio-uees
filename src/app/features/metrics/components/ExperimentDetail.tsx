@@ -72,13 +72,57 @@ export default function ExperimentDetail({
     },
   })
 
+  const repeatMutation = useMutation({
+    mutationFn: async ({
+      isDryRun,
+      experimentData,
+    }: {
+      isDryRun: boolean
+      experimentData: NonNullable<typeof data>
+    }) => {
+      // Crear un nuevo experimento con los mismos valores
+      const newExperiment = await metricsService.createExperiment({
+        name: `${experimentData.name} (Repetición)`,
+        description: experimentData.description || undefined,
+        scenario: experimentData.scenario as any,
+        channelTarget: experimentData.channelTarget as any,
+        totalMessages: experimentData.totalMessages,
+        concurrency: experimentData.concurrency,
+        ratePerSec: experimentData.ratePerSec || undefined,
+        createdBy: experimentData.createdBy || undefined,
+      })
+      // Ejecutar el nuevo experimento inmediatamente
+      await metricsService.runExperiment(newExperiment.id, isDryRun)
+      return newExperiment
+    },
+    onSuccess: (newExperiment) => {
+      void queryClient.invalidateQueries({ queryKey: ['experiments'] })
+      // Navegar al nuevo experimento
+      window.location.href = `#experiment-${newExperiment.id}`
+      // O simplemente refrescar la lista
+      void queryClient.invalidateQueries({ queryKey: ['experiment'] })
+    },
+  })
+
   const handleDelete = () => {
+    if (!data) return
     if (
       window.confirm(
         `¿Estás seguro de que quieres eliminar el experimento "${data.name}"? Esta acción no se puede deshacer.`,
       )
     ) {
       deleteMutation.mutate()
+    }
+  }
+
+  const handleRepeat = () => {
+    if (!data) return
+    if (
+      window.confirm(
+        `¿Deseas crear y ejecutar una nueva copia del experimento "${data.name}" con los mismos parámetros?`,
+      )
+    ) {
+      repeatMutation.mutate({ isDryRun: false, experimentData: data })
     }
   }
 
@@ -156,13 +200,26 @@ export default function ExperimentDetail({
             Exportar CSV
           </button>
           {data.status !== 'RUNNING' && (
-            <button
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50"
-            >
-              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
-            </button>
+            <>
+              <button
+                onClick={handleRepeat}
+                disabled={repeatMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white rounded-md shadow hover:bg-green-700 disabled:opacity-50"
+                title="Crear y ejecutar una copia de este experimento"
+              >
+                {repeatMutation.isPending
+                  ? 'Repitiendo...'
+                  : 'Repetir Experimento'}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50"
+                title="Eliminar este experimento"
+              >
+                {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </>
           )}
         </div>
       </div>

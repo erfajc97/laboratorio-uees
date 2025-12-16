@@ -30,6 +30,28 @@ export default function ExperimentsList({
     },
   })
 
+  const repeatMutation = useMutation({
+    mutationFn: async (experiment: ExperimentRun) => {
+      // Crear un nuevo experimento con los mismos valores
+      const newExperiment = await metricsService.createExperiment({
+        name: `${experiment.name} (Repetición)`,
+        description: experiment.description || undefined,
+        scenario: experiment.scenario as any,
+        channelTarget: experiment.channelTarget as any,
+        totalMessages: experiment.totalMessages,
+        concurrency: experiment.concurrency,
+        ratePerSec: experiment.ratePerSec || undefined,
+        createdBy: experiment.createdBy || undefined,
+      })
+      // Ejecutar el nuevo experimento inmediatamente
+      await metricsService.runExperiment(newExperiment.id, false)
+      return newExperiment
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['experiments'] })
+    },
+  })
+
   const handleDelete = async (
     id: string,
     name: string,
@@ -46,6 +68,26 @@ export default function ExperimentsList({
       } catch (deleteError) {
         alert(
           `Error al eliminar el experimento: ${deleteError instanceof Error ? deleteError.message : 'Error desconocido'}`,
+        )
+      }
+    }
+  }
+
+  const handleRepeat = async (
+    experiment: ExperimentRun,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation()
+    if (
+      window.confirm(
+        `¿Deseas crear y ejecutar una nueva copia del experimento "${experiment.name}" con los mismos parámetros?`,
+      )
+    ) {
+      try {
+        await repeatMutation.mutateAsync(experiment)
+      } catch (repeatError) {
+        alert(
+          `Error al repetir el experimento: ${repeatError instanceof Error ? repeatError.message : 'Error desconocido'}`,
         )
       }
     }
@@ -159,33 +201,47 @@ export default function ExperimentsList({
                       {experiment._count.metricEvents} eventos
                     </span>
                   )}
-                  <div className="flex gap-2">
-                    {onSelectExperiment && experiment.status === 'DONE' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectExperiment(experiment.id)
-                        }}
-                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md shadow hover:bg-blue-700"
-                        title="Usar este experimento en los filtros"
-                      >
-                        Ver Métricas
-                      </button>
-                    )}
-                    {experiment.status !== 'RUNNING' && (
-                      <button
-                        onClick={(e) =>
-                          handleDelete(experiment.id, experiment.name, e)
-                        }
-                        disabled={deleteMutation.isPending}
-                        className="px-3 py-1 text-xs bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Eliminar experimento"
-                      >
-                        {deleteMutation.isPending
-                          ? 'Eliminando...'
-                          : 'Eliminar'}
-                      </button>
-                    )}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      {onSelectExperiment && experiment.status === 'DONE' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onSelectExperiment(experiment.id)
+                          }}
+                          className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md shadow hover:bg-blue-700"
+                          title="Usar este experimento en los filtros"
+                        >
+                          Ver Métricas
+                        </button>
+                      )}
+                      {experiment.status !== 'RUNNING' && (
+                        <>
+                          <button
+                            onClick={(e) => handleRepeat(experiment, e)}
+                            disabled={repeatMutation.isPending}
+                            className="px-3 py-1 text-xs bg-green-600 text-white rounded-md shadow hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Crear y ejecutar una copia de este experimento"
+                          >
+                            {repeatMutation.isPending
+                              ? 'Repitiendo...'
+                              : 'Repetir'}
+                          </button>
+                          <button
+                            onClick={(e) =>
+                              handleDelete(experiment.id, experiment.name, e)
+                            }
+                            disabled={deleteMutation.isPending}
+                            className="px-3 py-1 text-xs bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Eliminar experimento"
+                          >
+                            {deleteMutation.isPending
+                              ? 'Eliminando...'
+                              : 'Eliminar'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
